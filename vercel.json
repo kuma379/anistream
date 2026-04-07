@@ -2,7 +2,7 @@
   "framework": null,
   "buildCommand": "pnpm --filter @workspace/anime-stream run build",
   "outputDirectory": "artifacts/anime-stream/dist",
-  "installCommand": "pnpm install --no-frozen-lockfile",
+  "installCommand": "pnpm install --no-frozen-lockfile && cd api && npm install",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/(.*)", "destination": "/index.html" }
