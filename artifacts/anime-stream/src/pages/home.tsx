@@ -38,11 +38,11 @@ function ScrollRow({ title, items, href }: { title: string; items: any[]; href?:
   if (!items || items.length === 0) return null;
 
   return (
-    <div className="relative py-4 group/row">
-      <div className="flex items-center justify-between px-4 md:px-8 mb-4">
-        <h2 className="text-xl md:text-2xl font-bold font-display text-foreground/90">{title}</h2>
+    <div className="relative py-3 group/row">
+      <div className="flex items-center justify-between px-4 md:px-8 mb-3">
+        <h2 className="text-lg md:text-xl font-bold font-display text-foreground/90">{title}</h2>
         {href && (
-          <Link href={href} className="text-sm font-medium text-primary hover:underline hidden sm:block">
+          <Link href={href} className="text-xs font-medium text-primary hover:underline">
             View All
           </Link>
         )}
@@ -56,22 +56,27 @@ function ScrollRow({ title, items, href }: { title: string; items: any[]; href?:
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => scroll("left")}
-              className="absolute left-0 top-0 bottom-0 w-12 md:w-16 z-10 bg-gradient-to-r from-background via-background/80 to-transparent flex items-center justify-start px-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
+              className="absolute left-0 top-0 bottom-0 w-10 md:w-12 z-10 bg-gradient-to-r from-background via-background/80 to-transparent flex items-center justify-start px-1.5 opacity-0 group-hover/row:opacity-100 transition-opacity"
             >
-              <div className="w-8 h-8 rounded-full bg-background/80 flex items-center justify-center border border-border/50 text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors">
-                <ChevronLeft className="w-5 h-5" />
+              <div className="w-7 h-7 rounded-full bg-background/80 flex items-center justify-center border border-border/50 text-foreground hover:bg-primary hover:text-primary-foreground transition-colors">
+                <ChevronLeft className="w-4 h-4" />
               </div>
             </motion.button>
           )}
         </AnimatePresence>
 
-        <div 
-          ref={scrollRef} 
+        <div
+          ref={scrollRef}
           onScroll={checkScroll}
-          className="flex gap-4 overflow-x-auto hide-scrollbar px-4 md:px-8 snap-x snap-mandatory"
+          className="flex gap-3 overflow-x-auto scrollbar-none px-4 md:px-8 snap-x snap-mandatory"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {items.map((anime, i) => (
-            <div key={anime.slug} className="min-w-[150px] md:min-w-[200px] flex-shrink-0 snap-start">
+            <div
+              key={anime.slug || i}
+              className="flex-shrink-0 snap-start"
+              style={{ width: "clamp(110px, 28vw, 160px)" }}
+            >
               <AnimeCard anime={anime} index={i} />
             </div>
           ))}
@@ -84,10 +89,10 @@ function ScrollRow({ title, items, href }: { title: string; items: any[]; href?:
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => scroll("right")}
-              className="absolute right-0 top-0 bottom-0 w-12 md:w-16 z-10 bg-gradient-to-l from-background via-background/80 to-transparent flex items-center justify-end px-2 opacity-0 group-hover/row:opacity-100 transition-opacity"
+              className="absolute right-0 top-0 bottom-0 w-10 md:w-12 z-10 bg-gradient-to-l from-background via-background/80 to-transparent flex items-center justify-end px-1.5 opacity-0 group-hover/row:opacity-100 transition-opacity"
             >
-              <div className="w-8 h-8 rounded-full bg-background/80 flex items-center justify-center border border-border/50 text-foreground hover:bg-primary hover:text-primary-foreground hover:border-primary transition-colors">
-                <ChevronRight className="w-5 h-5" />
+              <div className="w-7 h-7 rounded-full bg-background/80 flex items-center justify-center border border-border/50 text-foreground hover:bg-primary hover:text-primary-foreground transition-colors">
+                <ChevronRight className="w-4 h-4" />
               </div>
             </motion.button>
           )}
@@ -104,14 +109,14 @@ function HeroBanner({ featured }: { featured: any[] }) {
     if (!featured || featured.length === 0) return;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % Math.min(featured.length, 5));
-    }, 8000);
+    }, 7000);
     return () => clearInterval(timer);
   }, [featured]);
 
   if (!featured || featured.length === 0) return null;
 
   const current = featured[currentIndex];
-  
+
   const getHref = () => {
     switch (current.contentType) {
       case "film": return `/film/${current.slug}`;
@@ -121,63 +126,63 @@ function HeroBanner({ featured }: { featured: any[] }) {
   };
 
   return (
-    <div className="relative w-full h-[70vh] md:h-[85vh] overflow-hidden">
+    /* Hero — 45vh on mobile, 65vh on desktop (reduced from 70/85vh) */
+    <div className="relative w-full overflow-hidden" style={{ height: "clamp(300px, 45vh, 520px)" }}>
       <AnimatePresence mode="wait">
         <motion.div
           key={currentIndex}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 1 }}
+          transition={{ duration: 0.8 }}
           className="absolute inset-0"
         >
           <img
             src={current.poster}
             alt={current.title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-top"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-background via-background/60 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-background/10" />
+          <div className="absolute inset-0 bg-gradient-to-r from-background/80 via-background/30 to-transparent" />
         </motion.div>
       </AnimatePresence>
 
       <div className="absolute inset-0 flex items-end">
-        <div className="container mx-auto px-4 md:px-8 pb-24 md:pb-32">
+        <div className="w-full px-4 md:px-10 pb-10 md:pb-14">
           <motion.div
             key={`content-${currentIndex}`}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            className="max-w-2xl"
+            transition={{ duration: 0.5, delay: 0.2 }}
+            className="max-w-xl"
           >
             {current.type && (
-              <span className="inline-block px-2 py-1 bg-primary/20 text-primary border border-primary/50 rounded text-xs font-bold tracking-wider mb-4 uppercase">
+              <span className="inline-block px-2 py-0.5 bg-primary/20 text-primary border border-primary/50 rounded text-[10px] font-bold tracking-wider mb-2 uppercase">
                 {current.type}
               </span>
             )}
-            <h1 className="text-4xl md:text-6xl lg:text-7xl font-extrabold font-display leading-tight mb-4 drop-shadow-lg text-white">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold font-display leading-tight mb-2 text-white drop-shadow-lg line-clamp-2">
               {current.title}
             </h1>
-            <div className="flex items-center gap-4 mb-6 text-sm text-white/80 font-medium">
+            <div className="flex items-center gap-3 mb-4 text-xs text-white/80 font-medium">
               {current.rating && current.rating !== "?" && (
-                <span className="flex items-center gap-1">
-                  <span className="text-yellow-500 text-lg">★</span> {current.rating}
+                <span className="flex items-center gap-0.5">
+                  <span className="text-yellow-400">★</span> {current.rating}
                 </span>
               )}
               {current.episode && <span>{current.episode}</span>}
               {current.status && <span className="text-primary">{current.status}</span>}
             </div>
-            
-            <div className="flex flex-wrap items-center gap-3 md:gap-4">
-              <Button size="lg" className="h-12 px-6 md:px-8 text-base font-bold rounded-full gap-2 hover:scale-105 transition-transform" asChild>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" className="h-9 px-5 text-sm font-bold rounded-full gap-1.5 hover:scale-105 transition-transform" asChild>
                 <Link href={getHref()}>
-                  <PlayCircle className="w-5 h-5 fill-current" />
+                  <PlayCircle className="w-4 h-4 fill-current" />
                   Watch Now
                 </Link>
               </Button>
-              <Button size="lg" variant="secondary" className="h-12 px-6 md:px-8 text-base font-bold rounded-full gap-2 bg-secondary/80 backdrop-blur hover:bg-secondary hover:scale-105 transition-transform" asChild>
+              <Button size="sm" variant="secondary" className="h-9 px-5 text-sm font-bold rounded-full gap-1.5 bg-secondary/80 backdrop-blur hover:scale-105 transition-transform" asChild>
                 <Link href={getHref()}>
-                  <Info className="w-5 h-5" />
+                  <Info className="w-4 h-4" />
                   Details
                 </Link>
               </Button>
@@ -185,17 +190,17 @@ function HeroBanner({ featured }: { featured: any[] }) {
           </motion.div>
         </div>
       </div>
-      
-      {/* Slider indicators */}
-      <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-2">
+
+      {/* Slider dots */}
+      <div className="absolute bottom-3 right-4 flex gap-1.5">
         {featured.slice(0, 5).map((_, i) => (
           <button
             key={i}
             onClick={() => setCurrentIndex(i)}
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              i === currentIndex ? "w-8 bg-primary" : "w-3 bg-white/40 hover:bg-white/60"
+            className={`h-1 rounded-full transition-all duration-300 ${
+              i === currentIndex ? "w-6 bg-primary" : "w-2 bg-white/40 hover:bg-white/60"
             }`}
-            aria-label={`Go to slide ${i + 1}`}
+            aria-label={`Slide ${i + 1}`}
           />
         ))}
       </div>
@@ -205,37 +210,38 @@ function HeroBanner({ featured }: { featured: any[] }) {
 
 export default function Home() {
   const { data: homeData, isLoading: isLoadingHome, error: homeError } = useGetHome();
-  
-  const { data: filmsData, isLoading: isLoadingFilms } = useGetAnimeList({ 
-    category: "film" 
-  });
-  
-  const { data: donghuaData, isLoading: isLoadingDonghua } = useGetAnimeList({ 
-    category: "animedonghua" 
-  });
+
+  const { data: filmsData, isLoading: isLoadingFilms } = useGetAnimeList({ category: "film" });
+  const { data: donghuaData, isLoading: isLoadingDonghua } = useGetAnimeList({ category: "animedonghua" });
 
   if (isLoadingHome) return <LoadingPage />;
-  if (homeError) return <ErrorState title="Failed to load homepage" />;
+  if (homeError) return <ErrorState title="Gagal memuat halaman utama" />;
   if (!homeData) return null;
 
   return (
     <div className="min-h-screen bg-background pb-12">
-      <HeroBanner featured={homeData.featured || homeData.latest} />
-      
-      <div className="space-y-6 md:space-y-8 -mt-8 md:-mt-12 relative z-20">
-        <ScrollRow title="Latest Episodes" items={homeData.latest} href="/list/update" />
-        <ScrollRow title="Trending Now" items={homeData.popular} href="/list/populer" />
-        
+      <HeroBanner featured={homeData.featured || homeData.latest || []} />
+
+      <div className="space-y-4 md:space-y-6 relative z-20 -mt-4 md:-mt-6">
+        <ScrollRow title="Episode Terbaru" items={homeData.latest || []} href="/list/update" />
+        <ScrollRow title="Trending" items={homeData.popular || []} href="/list/populer" />
+
         {isLoadingFilms ? (
-          <div className="px-4 md:px-8 py-4"><h2 className="text-xl md:text-2xl font-bold font-display mb-4">Films & Movies</h2><LoadingRow /></div>
+          <div className="px-4 md:px-8 py-3">
+            <h2 className="text-lg md:text-xl font-bold font-display mb-3">Film & Movie</h2>
+            <LoadingRow />
+          </div>
         ) : (
-          <ScrollRow title="Films & Movies" items={filmsData?.data || []} href="/list/film" />
+          <ScrollRow title="Film & Movie" items={filmsData?.data || []} href="/list/film" />
         )}
-        
-        <ScrollRow title="Ongoing Series" items={homeData.ongoing} href="/list/ongoing" />
-        
+
+        <ScrollRow title="Sedang Tayang" items={homeData.ongoing || []} href="/list/ongoing" />
+
         {isLoadingDonghua ? (
-          <div className="px-4 md:px-8 py-4"><h2 className="text-xl md:text-2xl font-bold font-display mb-4">Donghua</h2><LoadingRow /></div>
+          <div className="px-4 md:px-8 py-3">
+            <h2 className="text-lg md:text-xl font-bold font-display mb-3">Donghua</h2>
+            <LoadingRow />
+          </div>
         ) : (
           <ScrollRow title="Donghua" items={donghuaData?.data || []} href="/list/animedonghua" />
         )}
