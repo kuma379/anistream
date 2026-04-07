@@ -357,3 +357,4 @@ app.get("/api/anime/server", async (req: Request, res: Response) => {
 export default function handler(req: IncomingMessage, res: ServerResponse) {
   return app(req as Request, res as Response);
 }
+
