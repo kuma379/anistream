@@ -3,13 +3,15 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: API specification for Anime & Film streaming site
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: anime
+    description: Anime & Film data endpoints
 paths:
   /healthz:
     get:
@@ -24,6 +26,300 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /anime/home:
+    get:
+      operationId: getHome
+      tags: [anime]
+      summary: Get home page data
+      description: Returns featured, latest, and popular anime from the home page
+      responses:
+        "200":
+          description: Home page data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HomeData"
+        "500":
+          description: Scraping error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /anime/search:
+    get:
+      operationId: searchAnime
+      tags: [anime]
+      summary: Search anime
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Search query
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Search results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnimeListResponse"
+        "500":
+          description: Scraping error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /anime/list:
+    get:
+      operationId: getAnimeList
+      tags: [anime]
+      summary: Get anime/film list by category
+      parameters:
+        - name: category
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [animedonghua, film, series, tvshow, others, ongoing, completed, populer, latest, update, all-anime, all-anime-reverse]
+          description: Category type
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Anime list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnimeListResponse"
+        "500":
+          description: Scraping error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /anime/catalog:
+    get:
+      operationId: getCatalog
+      tags: [anime]
+      summary: Get filtered catalog
+      parameters:
+        - name: title
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: order
+          in: query
+          schema:
+            type: string
+            enum: [update, title, rating]
+        - name: type
+          in: query
+          schema:
+            type: string
+            enum: [TV, Movie, OVA, Special, ONA, Music]
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [Currently Airing, Finished Airing, Not yet aired]
+      responses:
+        "200":
+          description: Filtered catalog
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnimeListResponse"
+        "500":
+          description: Scraping error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /anime/genres:
+    get:
+      operationId: getGenres
+      tags: [anime]
+      summary: Get all genres
+      responses:
+        "200":
+          description: Genre list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenreListResponse"
+        "500":
+          description: Scraping error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /anime/genre/{genreSlug}:
+    get:
+      operationId: getByGenre
+      tags: [anime]
+      summary: Get anime by genre
+      parameters:
+        - name: genreSlug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+      responses:
+        "200":
+          description: Anime list by genre
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnimeListResponse"
+        "500":
+          description: Scraping error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /anime/schedule:
+    get:
+      operationId: getSchedule
+      tags: [anime]
+      summary: Get airing schedule
+      parameters:
+        - name: day
+          in: query
+          schema:
+            type: string
+            enum: [senin, selasa, rabu, kamis, jumat, sabtu, minggu]
+      responses:
+        "200":
+          description: Schedule data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleResponse"
+        "500":
+          description: Scraping error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /anime/detail/{slug}:
+    get:
+      operationId: getAnimeDetail
+      tags: [anime]
+      summary: Get anime detail
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [anime, series, film]
+          description: Content type for proper URL construction
+      responses:
+        "200":
+          description: Anime detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnimeDetail"
+        "500":
+          description: Scraping error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /anime/episode/{slug}:
+    get:
+      operationId: getEpisode
+      tags: [anime]
+      summary: Get episode player data
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Episode data with embed links
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EpisodeData"
+        "500":
+          description: Scraping error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /anime/server:
+    get:
+      operationId: getServer
+      tags: [anime]
+      summary: Get video server URL
+      parameters:
+        - name: post
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: nume
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: type
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Server embed URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServerResponse"
+        "500":
+          description: Scraping error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +330,222 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        message:
+          type: string
+      required:
+        - error
+        - message
+
+    AnimeCard:
+      type: object
+      properties:
+        title:
+          type: string
+        slug:
+          type: string
+        poster:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        rating:
+          type: string
+        episode:
+          type: string
+        contentType:
+          type: string
+          enum: [anime, series, film]
+      required:
+        - title
+        - slug
+
+    AnimeListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnimeCard"
+        pagination:
+          type: object
+          properties:
+            currentPage:
+              type: integer
+            hasNext:
+              type: boolean
+            hasPrev:
+              type: boolean
+          required:
+            - currentPage
+            - hasNext
+            - hasPrev
+      required:
+        - data
+        - pagination
+
+    HomeData:
+      type: object
+      properties:
+        featured:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnimeCard"
+        latest:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnimeCard"
+        popular:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnimeCard"
+        ongoing:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnimeCard"
+      required:
+        - featured
+        - latest
+        - popular
+        - ongoing
+
+    Genre:
+      type: object
+      properties:
+        name:
+          type: string
+        slug:
+          type: string
+        count:
+          type: string
+      required:
+        - name
+        - slug
+
+    GenreListResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Genre"
+      required:
+        - data
+
+    ScheduleDay:
+      type: object
+      properties:
+        day:
+          type: string
+        anime:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnimeCard"
+      required:
+        - day
+        - anime
+
+    ScheduleResponse:
+      type: object
+      properties:
+        schedule:
+          type: array
+          items:
+            $ref: "#/components/schemas/ScheduleDay"
+      required:
+        - schedule
+
+    AnimeDetail:
+      type: object
+      properties:
+        title:
+          type: string
+        alternativeTitle:
+          type: string
+        poster:
+          type: string
+        synopsis:
+          type: string
+        genres:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+        type:
+          type: string
+        rating:
+          type: string
+        episodes:
+          type: string
+        duration:
+          type: string
+        studio:
+          type: string
+        released:
+          type: string
+        episodeList:
+          type: array
+          items:
+            type: object
+            properties:
+              title:
+                type: string
+              slug:
+                type: string
+              date:
+                type: string
+            required:
+              - title
+              - slug
+      required:
+        - title
+        - poster
+        - synopsis
+
+    EpisodeData:
+      type: object
+      properties:
+        title:
+          type: string
+        servers:
+          type: array
+          items:
+            type: object
+            properties:
+              name:
+                type: string
+              post:
+                type: string
+              nume:
+                type: string
+              type:
+                type: string
+            required:
+              - name
+        embedUrl:
+          type: string
+        prevEpisode:
+          type: string
+        nextEpisode:
+          type: string
+        animeSlug:
+          type: string
+        animeTitle:
+          type: string
+      required:
+        - title
+        - servers
+
+    ServerResponse:
+      type: object
+      properties:
+        embedUrl:
+          type: string
+      required:
+        - embedUrl

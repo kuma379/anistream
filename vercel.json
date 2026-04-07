@@ -1,0 +1,15 @@
+{
+  "buildCommand": "pnpm --filter @workspace/anime-stream run build",
+  "outputDirectory": "artifacts/anime-stream/dist/public",
+  "installCommand": "pnpm install --no-frozen-lockfile",
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "functions": {
+    "api/index.ts": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  }
+}

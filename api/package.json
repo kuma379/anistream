@@ -1,0 +1,17 @@
+{
+  "name": "anistream-api",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.14.0",
+    "cheerio": "^1.2.0",
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.0.0",
+    "typescript": "~5.9.2"
+  }
+}
