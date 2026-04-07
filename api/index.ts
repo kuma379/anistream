@@ -1,73 +1,87 @@
 import express, { type Request, type Response } from "express";
 import cors from "cors";
 import axios from "axios";
-import * as cheerio from "cheerio";
 import type { IncomingMessage, ServerResponse } from "http";
 
-const API_BASE = "https://www.sankavollerei.com/anime/winbu";
-const WINBU_BASE = "https://winbu.net";
+const BASE = "https://www.sankavollerei.com/anime/winbu";
 
 const HEADERS = {
   "User-Agent":
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+  Accept: "application/json, text/plain, */*",
   "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
+  Referer: "https://winbu.net/",
 };
 
-const apiClient = axios.create({ baseURL: API_BASE, timeout: 25000, headers: HEADERS });
-const htmlClient = axios.create({ baseURL: WINBU_BASE, timeout: 25000, headers: HEADERS });
-
-function toContentType(apiType?: string): "anime" | "series" | "film" {
-  if (apiType === "film") return "film";
-  if (apiType === "series") return "series";
-  return "anime";
-}
+const api = axios.create({ baseURL: BASE, timeout: 25000, headers: HEADERS });
 
 function cleanViews(v?: string): string {
   if (!v) return "";
   return v.split(/[\t\n]/)[0].trim();
 }
 
-function mapCard(item: Record<string, string>) {
+function toContentType(t?: string): "anime" | "series" | "film" {
+  if (t === "film") return "film";
+  if (t === "series") return "series";
+  return "anime";
+}
+
+function mapItem(item: Record<string, string>) {
   return {
     title: item.title ?? "",
-    slug: item.slug ?? "",
-    poster: item.poster ?? "",
-    type: item.type,
-    status: item.status,
-    rating: item.rating,
-    episode: item.episode,
-    views: cleanViews(item.views),
-    time: item.time,
+    slug: item.id ?? item.slug ?? "",
+    poster: item.image ?? item.poster ?? "",
+    type: item.type ?? "",
+    status: item.status ?? "",
+    rating: item.rating ?? "",
+    episode: item.episode ?? "",
+    views: cleanViews(item.views ?? ""),
+    time: item.time ?? "",
     contentType: toContentType(item.type),
   };
 }
 
-async function scrapeHome() {
-  const { data } = await apiClient.get("/");
+function extractList(res: Record<string, unknown>) {
+  const data = (res.data ?? res) as Record<string, unknown>;
+  if (Array.isArray(data)) return data as Record<string, string>[];
+  if (Array.isArray(res.results)) return res.results as Record<string, string>[];
+  return [];
+}
+
+function extractPagination(res: Record<string, unknown>, page: number) {
+  const p = (res.pagination ?? {}) as Record<string, number>;
   return {
-    featured: (data.featured ?? []).map(mapCard),
-    latest: (data.latest ?? []).map(mapCard),
-    popular: (data.popular ?? []).map(mapCard),
-    ongoing: (data.ongoing ?? []).map(mapCard),
+    totalPages: p.total_pages ?? 1,
+    currentPage: p.current_page ?? page,
+  };
+}
+
+async function scrapeHome() {
+  const { data: res } = await api.get("/home");
+  const d = (res.data ?? res) as Record<string, Record<string, string>[]>;
+  return {
+    featured: (d.top10_anime ?? []).map(mapItem),
+    latest: (d.latest_anime ?? []).map(mapItem),
+    popular: (d.top10_film ?? []).map(mapItem),
+    ongoing: (d.latest_series ?? []).map(mapItem),
+    latestFilm: (d.latest_film ?? []).map(mapItem),
+    tvShow: (d.tv_show ?? []).map(mapItem),
   };
 }
 
 async function scrapeSearch(q: string, page = 1) {
-  const { data } = await apiClient.get("/search", { params: { q, page } });
+  const { data: res } = await api.get("/search", { params: { q, page } });
   return {
-    results: (data.results ?? data.data ?? []).map(mapCard),
-    totalPages: data.totalPages ?? data.total_pages ?? 1,
-    currentPage: page,
+    results: ((res.results ?? []) as Record<string, string>[]).map(mapItem),
+    ...extractPagination(res, page),
   };
 }
 
 async function scrapeAnimeList(category: string, page = 1) {
-  const { data } = await apiClient.get(`/list/${category}`, { params: { page } });
+  const { data: res } = await api.get(`/${category}`, { params: { page } });
   return {
-    results: (data.results ?? data.data ?? []).map(mapCard),
-    totalPages: data.totalPages ?? data.total_pages ?? 1,
-    currentPage: page,
+    results: extractList(res).map(mapItem),
+    ...extractPagination(res, page),
   };
 }
 
@@ -78,74 +92,57 @@ async function scrapeCatalog(params: {
   type?: string;
   status?: string;
 }) {
-  const { data } = await apiClient.get("/catalog", { params });
+  const { data: res } = await api.get("/catalog", { params });
   return {
-    results: (data.results ?? data.data ?? []).map(mapCard),
-    totalPages: data.totalPages ?? data.total_pages ?? 1,
-    currentPage: params.page ?? 1,
+    results: extractList(res).map(mapItem),
+    ...extractPagination(res, params.page ?? 1),
   };
 }
 
 async function scrapeGenres() {
-  const { data } = await apiClient.get("/genres");
-  return { genres: data.genres ?? data.data ?? data };
+  const { data: res } = await api.get("/genres");
+  const genres = Array.isArray(res.data) ? res.data : (res.genres ?? res.data ?? []);
+  return { genres };
 }
 
-async function scrapeByGenre(genreSlug: string, page = 1) {
-  const { data } = await apiClient.get(`/genre/${genreSlug}`, { params: { page } });
+async function scrapeByGenre(slug: string, page = 1) {
+  const { data: res } = await api.get(`/genre/${slug}`, { params: { page } });
   return {
-    results: (data.results ?? data.data ?? []).map(mapCard),
-    totalPages: data.totalPages ?? data.total_pages ?? 1,
-    currentPage: page,
-    genre: data.genre,
+    results: extractList(res).map(mapItem),
+    ...extractPagination(res, page),
+    genre: (res as Record<string, unknown>).genre,
   };
 }
 
 async function scrapeSchedule(day?: string) {
-  const { data } = await apiClient.get("/schedule", { params: day ? { day } : {} });
-  return data;
+  const { data: res } = await api.get("/schedule", { params: day ? { day } : {} });
+  return res;
 }
 
 async function scrapeAnimeDetail(slug: string, type: "anime" | "series" | "film") {
-  const { data } = await apiClient.get(`/detail/${slug}`, { params: { type } });
-  return data;
+  const endpoint = type === "film" ? "film" : type === "series" ? "series" : "anime";
+  const { data: res } = await api.get(`/${endpoint}/${slug}`);
+  return (res as Record<string, unknown>).data ?? res;
 }
 
 async function scrapeEpisode(slug: string) {
-  const { data: pageHtml } = await htmlClient.get(`/${slug}`);
-  const $ = cheerio.load(pageHtml);
-
-  const title = $("h1.episodetitle, h1.epstitle, .entry-title, h1").first().text().trim();
-  const postId = $("[data-post]").first().attr("data-post") ?? "";
-
-  const servers: { name: string; post?: string; nume?: string; type?: string }[] = [];
-  $(".server-item, [data-id]").each((_i: number, el: cheerio.Element) => {
-    const name = $(el).text().trim() || $(el).attr("data-server") || "Server";
-    const post = postId || $(el).attr("data-post");
-    const nume = $(el).attr("data-id") ?? $(el).attr("data-nume");
-    const type = $(el).attr("data-type") ?? "iframe";
-    if (name) servers.push({ name, post, nume, type });
-  });
-
-  const prevEpisode = $(".prev-episode a, .previouspostslink").attr("href")?.split("/").pop();
-  const nextEpisode = $(".next-episode a, .nextpostslink").attr("href")?.split("/").pop();
-
-  return { title, servers, prevEpisode, nextEpisode };
+  const { data: res } = await api.get(`/episode/${slug}`);
+  return (res as Record<string, unknown>).data ?? res;
 }
 
 async function scrapeServer(post: string, nume: string, type: string) {
-  const { data } = await apiClient.get("/server", { params: { post, nume, type } });
-  return data;
+  const { data: res } = await api.get("/server", { params: { post, nume, type } });
+  return res;
 }
 
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-function sendError(res: Response, err: unknown, statusCode = 500) {
-  const message = err instanceof Error ? err.message : "Unknown error";
-  res.status(statusCode).json({ error: "Error", message });
+function sendError(res: Response, err: unknown) {
+  const msg = err instanceof Error ? err.message : String(err);
+  const status = (err as { response?: { status?: number } })?.response?.status ?? 500;
+  res.status(status).json({ error: "Error", message: msg });
 }
 
 app.get("/api/healthz", (_req: Request, res: Response) => {
@@ -163,24 +160,33 @@ app.get("/api/anime/home", async (_req: Request, res: Response) => {
 app.get("/api/anime/search", async (req: Request, res: Response) => {
   try {
     const q = req.query.q as string;
-    const page = parseInt((req.query.page as string) || "1", 10);
-    if (!q) {
-      return res.status(400).json({ error: "BadRequest", message: "Query 'q' is required" });
-    }
+    const page = Number(req.query.page ?? 1);
+    if (!q) return res.status(400).json({ error: "BadRequest", message: "q is required" });
     res.json(await scrapeSearch(q, page));
   } catch (err) {
     sendError(res, err);
   }
 });
 
-app.get("/api/anime/list", async (req: Request, res: Response) => {
+app.get("/api/anime/list/:category", async (req: Request, res: Response) => {
   try {
-    const category = req.query.category as string;
-    const page = parseInt((req.query.page as string) || "1", 10);
-    if (!category) {
-      return res.status(400).json({ error: "BadRequest", message: "Query 'category' is required" });
-    }
-    res.json(await scrapeAnimeList(category, page));
+    const { category } = req.params;
+    const page = Number(req.query.page ?? 1);
+    const categoryMap: Record<string, string> = {
+      anime: "all-anime",
+      film: "film",
+      series: "series",
+      tvshow: "tvshow",
+      donghua: "animedonghua",
+      others: "others",
+      ongoing: "ongoing",
+      completed: "completed",
+      popular: "populer",
+      latest: "latest",
+      update: "update",
+    };
+    const endpoint = categoryMap[category] ?? category;
+    res.json(await scrapeAnimeList(endpoint, page));
   } catch (err) {
     sendError(res, err);
   }
@@ -189,7 +195,7 @@ app.get("/api/anime/list", async (req: Request, res: Response) => {
 app.get("/api/anime/catalog", async (req: Request, res: Response) => {
   try {
     const { title, page, order, type, status } = req.query as Record<string, string>;
-    res.json(await scrapeCatalog({ title, page: page ? parseInt(page, 10) : 1, order, type, status }));
+    res.json(await scrapeCatalog({ title, page: Number(page ?? 1), order, type, status }));
   } catch (err) {
     sendError(res, err);
   }
@@ -203,11 +209,11 @@ app.get("/api/anime/genres", async (_req: Request, res: Response) => {
   }
 });
 
-app.get("/api/anime/genre/:genreSlug", async (req: Request, res: Response) => {
+app.get("/api/anime/genre/:slug", async (req: Request, res: Response) => {
   try {
-    const { genreSlug } = req.params;
-    const page = parseInt((req.query.page as string) || "1", 10);
-    res.json(await scrapeByGenre(genreSlug, page));
+    const { slug } = req.params;
+    const page = Number(req.query.page ?? 1);
+    res.json(await scrapeByGenre(slug, page));
   } catch (err) {
     sendError(res, err);
   }
