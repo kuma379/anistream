@@ -1,4 +1,5 @@
 {
+  "framework": null,
   "buildCommand": "pnpm --filter @workspace/anime-stream run build",
   "outputDirectory": "artifacts/anime-stream/dist/public",
   "installCommand": "pnpm install --no-frozen-lockfile",
