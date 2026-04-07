@@ -41,10 +41,11 @@ function mapItem(item: Record<string, string>) {
   };
 }
 
-function extractList(res: Record<string, unknown>) {
-  const data = (res.data ?? res) as Record<string, unknown>;
+function extractList(res: Record<string, unknown>): Record<string, string>[] {
+  const data = res.data;
   if (Array.isArray(data)) return data as Record<string, string>[];
   if (Array.isArray(res.results)) return res.results as Record<string, string>[];
+  if (Array.isArray(res)) return res as Record<string, string>[];
   return [];
 }
 
@@ -77,8 +78,24 @@ async function scrapeSearch(q: string, page = 1) {
   };
 }
 
+const CATEGORY_MAP: Record<string, string> = {
+  animedonghua: "animedonghua",
+  film: "film",
+  series: "series",
+  tvshow: "tvshow",
+  others: "others",
+  ongoing: "ongoing",
+  completed: "completed",
+  populer: "populer",
+  latest: "latest",
+  update: "update",
+  "all-anime": "all-anime",
+  "all-anime-reverse": "all-anime-reverse",
+};
+
 async function scrapeAnimeList(category: string, page = 1) {
-  const { data: res } = await api.get(`/${category}`, { params: { page } });
+  const endpoint = CATEGORY_MAP[category] ?? category;
+  const { data: res } = await api.get(`/${endpoint}`, { params: { page } });
   return {
     results: extractList(res).map(mapItem),
     ...extractPagination(res, page),
@@ -101,7 +118,7 @@ async function scrapeCatalog(params: {
 
 async function scrapeGenres() {
   const { data: res } = await api.get("/genres");
-  const genres = Array.isArray(res.data) ? res.data : (res.genres ?? res.data ?? []);
+  const genres = Array.isArray(res.data) ? res.data : (res.genres ?? []);
   return { genres };
 }
 
@@ -168,25 +185,11 @@ app.get("/api/anime/search", async (req: Request, res: Response) => {
   }
 });
 
-app.get("/api/anime/list/:category", async (req: Request, res: Response) => {
+app.get("/api/anime/list", async (req: Request, res: Response) => {
   try {
-    const { category } = req.params;
+    const category = (req.query.category as string) || "all-anime";
     const page = Number(req.query.page ?? 1);
-    const categoryMap: Record<string, string> = {
-      anime: "all-anime",
-      film: "film",
-      series: "series",
-      tvshow: "tvshow",
-      donghua: "animedonghua",
-      others: "others",
-      ongoing: "ongoing",
-      completed: "completed",
-      popular: "populer",
-      latest: "latest",
-      update: "update",
-    };
-    const endpoint = categoryMap[category] ?? category;
-    res.json(await scrapeAnimeList(endpoint, page));
+    res.json(await scrapeAnimeList(category, page));
   } catch (err) {
     sendError(res, err);
   }
