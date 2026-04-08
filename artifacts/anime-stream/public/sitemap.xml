@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://anistream-api-server3.vercel.app/</loc><changefreq>daily</changefreq><priority>1.0</priority><lastmod>2026-04-08</lastmod></url>
+  <url><loc>https://anistream-api-server3.vercel.app/search</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/catalog</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/genre</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/schedule</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/list/all-anime</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/list/film</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/list/animedonghua</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/list/ongoing</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/list/completed</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/list/populer</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/list/update</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/list/series</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/list/tvshow</loc><changefreq>daily</changefreq><priority>0.7</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/genre/action</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/genre/adventure</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/genre/comedy</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/genre/drama</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/genre/fantasy</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/genre/romance</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/genre/sci-fi</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/genre/shounen</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/about</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/privacy-policy</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/terms</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
+  <url><loc>https://anistream-api-server3.vercel.app/sitemap</loc><changefreq>monthly</changefreq><priority>0.3</priority></url>
+</urlset>
