@@ -47,7 +47,10 @@ export default function Episode() {
   if (!episode) return null;
 
   // Prioritize the server embedUrl if fetched, otherwise fallback to the default one if present
-  const videoUrl = serverData?.embedUrl || (activeServer === null ? episode.embedUrl : "");
+  const rawVideoUrl = serverData?.embedUrl || (activeServer === null ? episode.embedUrl : "");
+  // Wrap through our proxy to strip popup ads
+  const apiBase = import.meta.env.VITE_API_BASE ?? "";
+  const videoUrl = rawVideoUrl ? `${apiBase}/api/anime/proxy?url=${encodeURIComponent(rawVideoUrl)}` : "";
 
   return (
     <div className="min-h-[100dvh] bg-black text-white flex flex-col">
@@ -85,8 +88,8 @@ export default function Episode() {
               src={videoUrl}
               className="absolute inset-0 w-full h-full border-0"
               allowFullScreen
-              allow="autoplay; encrypted-media; fullscreen"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-presentation"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
+              sandbox="allow-scripts allow-forms allow-presentation"
               title={episode.title}
             ></iframe>
           ) : (

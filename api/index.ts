@@ -191,6 +191,39 @@ async function getServer(post: string, nume: string, type: string) {
   return { embedUrl: String(r.embed_url ?? r.embedUrl ?? "") };
 }
 
+
+// ── ad-free proxy ─────────────────────────────────────────────────────────────
+async function proxyEmbed(embedUrl: string): Promise<string> {
+  const origin = new URL(embedUrl).origin;
+  const { data: html } = await axios.get(embedUrl, {
+    timeout: 15000,
+    responseType: "text",
+    headers: {
+      ...HDRS,
+      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      Referer: origin + "/",
+    },
+  });
+
+  // Inject <base> so relative asset URLs resolve to original host
+  let out: string = html.replace(/(<head[^>]*>)/i, `$1<base href="${origin}/">`);
+
+  // Neutralise window.open / popunder patterns
+  out = out
+    .replace(/window\.open\s*\(/g, "void(0,")
+    .replace(/window\.top\s*\.\s*location/g, "void(0)//")
+    .replace(/top\s*\.\s*location\s*=/g, "void(0)//=")
+    .replace(/parent\s*\.\s*location/g, "void(0)//")
+    .replace(/document\.location\s*=/g, "void(0)//=")
+    .replace(
+      /<script[^>]*src=["'][^"']*(?:popads|popunder|popad|pop-under|pop-ad|clickunder|trafficjunky|mgid|exoclick|adsterra|hilltopads|moonads)[^"']*["'][^>]*>(\s*<\/script>)?/gi,
+      "<!-- ad-script removed -->",
+    )
+    .replace(/onclick\s*=\s*["']window\.open[^"']*["']/gi, 'onclick="void(0)"');
+
+  return out;
+}
+
 // ── request body reader ───────────────────────────────────────────────────────
 function readBody(req: IncomingMessage): Promise<string> {
   return new Promise(resolve => {
@@ -253,6 +286,27 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const post = q("post"), nume = q("nume"), type = q("type");
       if (!post || !nume || !type) return send(400, { error: "BadRequest", message: "post, nume, type required" });
       return send(200, await getServer(post, nume, type));
+    }
+
+
+    if (path === "/anime/proxy") {
+      const rawUrl = q("url");
+      if (!rawUrl) return send(400, { error: "BadRequest", message: "url required" });
+      let parsedUrl: URL;
+      try { parsedUrl = new URL(rawUrl); } catch { return send(400, { error: "BadRequest", message: "invalid url" }); }
+      if (!["http:", "https:"].includes(parsedUrl.protocol)) return send(400, { error: "BadRequest", message: "only http/https allowed" });
+
+      const proxiedHtml = await proxyEmbed(rawUrl);
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.setHeader(
+        "Content-Security-Policy",
+        "sandbox allow-scripts allow-forms allow-presentation; default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;"
+      );
+      res.setHeader("X-Frame-Options", "SAMEORIGIN");
+      res.removeHeader("Access-Control-Allow-Origin");
+      res.end(proxiedHtml);
+      return;
     }
 
     return send(404, { error: "NotFound", message: `Route ${path} not found` });
