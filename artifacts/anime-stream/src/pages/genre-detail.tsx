@@ -1,18 +1,66 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "wouter";
 import { useGetByGenre } from "@workspace/api-client-react";
+import type { AnimeCard as AnimeCardType } from "@workspace/api-client-react";
 import { AnimeCard } from "@/components/shared/AnimeCard";
-import { LoadingGrid, LoadingPage } from "@/components/shared/LoadingState";
+import { LoadingPage } from "@/components/shared/LoadingState";
 import { ErrorState } from "@/components/shared/ErrorState";
-import { Button } from "@/components/ui/button";
+import { Loader2 } from "lucide-react";
 
 export default function GenreDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [page, setPage] = useState(1);
-  
-  const { data, isLoading, error } = useGetByGenre(slug || "", { page }, {
+  const [allItems, setAllItems] = useState<AnimeCardType[]>([]);
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const hasNextRef = useRef(false);
+  const loadingRef = useRef(false);
+
+  // Reset when slug changes
+  useEffect(() => {
+    setPage(1);
+    setAllItems([]);
+    hasNextRef.current = false;
+    loadingRef.current = false;
+  }, [slug]);
+
+  const { data, isLoading, error, isFetching } = useGetByGenre(slug || "", { page }, {
     query: { enabled: !!slug }
   });
+
+  // Accumulate items across pages
+  useEffect(() => {
+    if (data?.data && data.data.length > 0) {
+      if (page === 1) {
+        setAllItems(data.data);
+      } else {
+        setAllItems(prev => {
+          const existingSlugs = new Set(prev.map(a => a.slug));
+          const newItems = data.data.filter(a => !existingSlugs.has(a.slug));
+          return [...prev, ...newItems];
+        });
+      }
+      hasNextRef.current = data.pagination?.hasNext ?? false;
+      loadingRef.current = false;
+    }
+  }, [data, page]);
+
+  // Intersection Observer for infinite scroll
+  const handleIntersect = useCallback((entries: IntersectionObserverEntry[]) => {
+    const entry = entries[0];
+    if (entry.isIntersecting && hasNextRef.current && !loadingRef.current && !isFetching) {
+      loadingRef.current = true;
+      setPage(p => p + 1);
+    }
+  }, [isFetching]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(handleIntersect, { rootMargin: "200px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [handleIntersect]);
 
   if (isLoading && page === 1) return <LoadingPage />;
   if (error) return <ErrorState title="Failed to load genre" />;
@@ -26,41 +74,32 @@ export default function GenreDetail() {
         <h1 className="text-3xl md:text-4xl font-bold font-display mb-2">{title} Anime</h1>
         <p className="text-muted-foreground mb-8 text-lg">Browse anime in the {title} genre</p>
 
-        {isLoading && page > 1 ? (
-          <LoadingGrid />
-        ) : data?.data && data.data.length > 0 ? (
-          <div className="space-y-8">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-              {data.data.map((anime, i) => (
-                <AnimeCard key={anime.slug} anime={anime} index={i} />
+        {allItems.length > 0 ? (
+          <>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2 md:gap-3">
+              {allItems.map((anime, i) => (
+                <AnimeCard key={`${anime.slug}-${i}`} anime={anime} index={i} />
               ))}
             </div>
-            
-            <div className="flex justify-center items-center gap-4 pt-8">
-              <Button 
-                variant="outline" 
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={!data.pagination?.hasPrev || page === 1}
-              >
-                Previous
-              </Button>
-              <div className="font-medium px-4 py-2 bg-secondary rounded-md">
-                Page {page}
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={() => setPage(p => p + 1)}
-                disabled={!data.pagination?.hasNext}
-              >
-                Next
-              </Button>
+
+            {/* Sentinel for infinite scroll */}
+            <div ref={sentinelRef} className="flex justify-center py-8">
+              {isFetching && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isFetching && !hasNextRef.current && allItems.length > 0 && (
+                <p className="text-sm text-muted-foreground">Semua konten sudah dimuat</p>
+              )}
             </div>
-          </div>
-        ) : (
+          </>
+        ) : !isLoading ? (
           <div className="text-center py-20 text-muted-foreground">
             <p className="text-lg">No anime found in this genre</p>
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );
