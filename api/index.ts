@@ -1,382 +1,230 @@
-import express, { type Request, type Response } from "express";
-import cors from "cors";
+import type { IncomingMessage, ServerResponse } from "http";
 import axios from "axios";
 import * as cheerio from "cheerio";
-import type { IncomingMessage, ServerResponse } from "http";
 
 const BASE = "https://www.sankavollerei.com/anime/winbu";
-const WINBU_BASE = "https://winbu.net";
+const WINBU = "https://winbu.net";
 
-const HEADERS = {
-  "User-Agent":
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+const HDRS = {
+  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36",
   "Accept-Language": "id-ID,id;q=0.9,en;q=0.8",
-  Referer: "https://winbu.net/",
+  "Referer": "https://winbu.net/",
 };
 
-const JSON_HEADERS = { ...HEADERS, Accept: "application/json, text/plain, */*" };
+const api = axios.create({ baseURL: BASE, timeout: 25000, headers: { ...HDRS, Accept: "application/json" } });
+const web = axios.create({ baseURL: WINBU, timeout: 25000, headers: { ...HDRS, Accept: "text/html" } });
 
-const api = axios.create({ baseURL: BASE, timeout: 25000, headers: JSON_HEADERS });
-const html = axios.create({ baseURL: WINBU_BASE, timeout: 25000, headers: HEADERS });
+// ── helpers ──────────────────────────────────────────────────────────────────
+type Dict = Record<string, unknown>;
 
-function cleanViews(v?: string): string {
-  if (!v) return "";
-  return v.split(/[\t\n]/)[0].trim();
-}
-
-function toContentType(t?: string): "anime" | "series" | "film" {
-  if (t === "film") return "film";
-  if (t === "series") return "series";
-  return "anime";
-}
-
-function mapItem(item: Record<string, string>) {
+function mapCard(item: Dict) {
+  const t = String(item.type ?? "");
   return {
-    title: item.title ?? "",
-    slug: item.id ?? item.slug ?? "",
-    poster: item.image ?? item.poster ?? "",
-    type: item.type ?? "",
-    status: item.status ?? "",
-    rating: item.rating ?? "",
-    episode: item.episode ?? "",
-    views: cleanViews(item.views ?? ""),
-    time: item.time ?? "",
-    contentType: toContentType(item.type),
+    title: String(item.title ?? ""),
+    slug: String(item.id ?? item.slug ?? ""),
+    poster: String(item.image ?? item.poster ?? ""),
+    type: t,
+    status: String(item.status ?? ""),
+    rating: String(item.rating ?? ""),
+    episode: String(item.episode ?? ""),
+    contentType: t === "film" ? "film" : t === "series" ? "series" : "anime",
   };
 }
 
-function extractItems(res: Record<string, unknown>): Record<string, string>[] {
-  if (Array.isArray(res.data)) return res.data as Record<string, string>[];
-  if (Array.isArray(res.results)) return res.results as Record<string, string>[];
-  if (Array.isArray(res)) return res as Record<string, string>[];
+function extractList(r: Dict): Dict[] {
+  if (Array.isArray(r.data)) return r.data as Dict[];
+  if (Array.isArray(r.results)) return r.results as Dict[];
+  if (Array.isArray(r)) return r as Dict[];
   return [];
 }
 
-function extractPagination(res: Record<string, unknown>, page: number) {
-  const p = (res.pagination ?? {}) as Record<string, unknown>;
-  const hasNext = p.has_next_page === true || (typeof p.total_pages === "number" && page < p.total_pages);
-  const hasPrev = p.has_prev_page === true || page > 1;
+function makePagination(r: Dict, page: number) {
+  const p = (r.pagination ?? {}) as Dict;
+  const total = Number(p.total_pages ?? 0);
   return {
     currentPage: Number(p.current_page ?? page),
-    hasNext,
-    hasPrev,
+    hasNext: p.has_next_page === true || (total > 0 && page < total),
+    hasPrev: page > 1,
   };
 }
 
-function extractSlugFromUrl(url: string): string {
-  return url.replace(/\/$/, "").split("/").pop() || "";
+function slugFromUrl(url: string) {
+  return url.replace(/\/$/, "").split("/").pop() ?? "";
 }
 
-// ─── Home ─────────────────────────────────────────────────────────────────────
-async function scrapeHome() {
-  const { data: res } = await api.get("/home");
-  const d = (res.data ?? res) as Record<string, Record<string, string>[]>;
+// ── scrapers ─────────────────────────────────────────────────────────────────
+async function getHome() {
+  const { data: r } = await api.get("/home");
+  const d = (r.data ?? r) as Record<string, Dict[]>;
   return {
-    featured: [...(d.top10_anime ?? []), ...(d.top10_film ?? [])].slice(0, 12).map(mapItem),
-    latest: (d.latest_anime ?? []).map(mapItem),
-    popular: (d.top10_anime ?? []).slice(0, 10).map(mapItem),
-    ongoing: (d.latest_anime ?? []).slice(0, 12).map(mapItem),
-    latestFilm: (d.latest_film ?? []).map(mapItem),
-    latestSeries: (d.latest_series ?? []).map(mapItem),
-    tvShow: (d.tv_show ?? []).map(mapItem),
+    featured: [...(d.top10_anime ?? []), ...(d.top10_film ?? [])].slice(0, 12).map(mapCard),
+    latest: (d.latest_anime ?? []).map(mapCard),
+    popular: (d.top10_anime ?? []).slice(0, 10).map(mapCard),
+    ongoing: (d.latest_anime ?? []).slice(0, 12).map(mapCard),
   };
 }
 
-// ─── Search ───────────────────────────────────────────────────────────────────
-async function scrapeSearch(q: string, page = 1) {
-  const { data: res } = await api.get("/search", { params: { q, page } });
+async function getSearch(q: string, page = 1) {
+  const { data: r } = await api.get("/search", { params: { q, page } });
+  return { data: ((r.results ?? []) as Dict[]).map(mapCard), pagination: makePagination(r, page) };
+}
+
+async function getList(category: string, page = 1) {
+  const { data: r } = await api.get(`/${category}`, { params: { page } });
+  return { data: extractList(r).map(mapCard), pagination: makePagination(r, page) };
+}
+
+async function getCatalog(params: Dict) {
+  const page = Number(params.page ?? 1);
+  const { data: r } = await api.get("/catalog", { params });
+  return { data: extractList(r).map(mapCard), pagination: makePagination(r, page) };
+}
+
+async function getGenres() {
+  const { data: r } = await api.get("/genres");
+  const list = (Array.isArray(r.data) ? r.data : Array.isArray(r.genres) ? r.genres : []) as Dict[];
+  return { data: list.map(g => ({ name: String(g.name ?? ""), slug: String(g.slug ?? ""), count: String(g.count ?? "") })) };
+}
+
+async function getByGenre(slug: string, page = 1) {
+  const { data: r } = await api.get(`/genre/${slug}`, { params: { page } });
+  return { data: extractList(r).map(mapCard), pagination: makePagination(r, page) };
+}
+
+async function getSchedule(day?: string) {
+  const { data: r } = await api.get("/schedule", { params: day ? { day } : {} });
+  const list = (Array.isArray(r.data) ? r.data : []) as Dict[];
   return {
-    data: ((res.results ?? []) as Record<string, string>[]).map(mapItem),
-    pagination: extractPagination(res, page),
+    schedule: [{
+      day: String(r.day ?? day ?? "senin"),
+      anime: list.map(x => ({ title: String(x.title ?? ""), slug: String(x.id ?? ""), poster: String(x.image ?? ""), type: String(x.type ?? ""), rating: String(x.score ?? ""), contentType: "anime" })),
+    }],
+    availableDays: r.available_days ?? [],
   };
 }
 
-// ─── List by Category ─────────────────────────────────────────────────────────
-const CATEGORY_MAP: Record<string, string> = {
-  animedonghua: "animedonghua", film: "film", series: "series", tvshow: "tvshow",
-  others: "others", ongoing: "ongoing", completed: "completed", populer: "populer",
-  latest: "latest", update: "update", "all-anime": "all-anime", "all-anime-reverse": "all-anime-reverse",
-};
-
-async function scrapeAnimeList(category: string, page = 1) {
-  const endpoint = CATEGORY_MAP[category] ?? category;
-  const { data: res } = await api.get(`/${endpoint}`, { params: { page } });
+async function getDetail(slug: string, type: string) {
+  const ep = type === "film" ? "film" : type === "series" ? "series" : "anime";
+  const { data: r } = await api.get(`/${ep}/${slug}`);
+  const d = (r.data ?? r) as Dict;
+  const info = (d.info ?? {}) as Dict;
   return {
-    data: extractItems(res).map(mapItem),
-    pagination: extractPagination(res, page),
-  };
-}
-
-// ─── Catalog ──────────────────────────────────────────────────────────────────
-async function scrapeCatalog(params: {
-  title?: string; page?: number; order?: string; type?: string; status?: string;
-}) {
-  const page = params.page || 1;
-  const { data: res } = await api.get("/catalog", { params });
-  return {
-    data: extractItems(res).map(mapItem),
-    pagination: extractPagination(res, page),
-  };
-}
-
-// ─── Genres ───────────────────────────────────────────────────────────────────
-async function scrapeGenres() {
-  const { data: res } = await api.get("/genres");
-  const genres = Array.isArray(res.data)
-    ? res.data
-    : Array.isArray(res.genres)
-    ? res.genres
-    : [];
-  return {
-    data: genres.map((g: Record<string, unknown>) => ({
-      name: g.name ?? "",
-      slug: g.slug ?? "",
-      count: String(g.count ?? ""),
-    })),
-  };
-}
-
-// ─── By Genre ─────────────────────────────────────────────────────────────────
-async function scrapeByGenre(slug: string, page = 1) {
-  const { data: res } = await api.get(`/genre/${slug}`, { params: { page } });
-  return {
-    data: extractItems(res).map(mapItem),
-    pagination: extractPagination(res, page),
-  };
-}
-
-// ─── Schedule ─────────────────────────────────────────────────────────────────
-async function scrapeSchedule(day?: string) {
-  const { data: res } = await api.get("/schedule", { params: day ? { day } : {} });
-  const d = res.data as Record<string, unknown>[] | undefined;
-  const animeList = (d ?? []).map((item: Record<string, unknown>) => ({
-    title: item.title ?? "",
-    slug: item.id ?? item.slug ?? "",
-    poster: (item.image as string) ?? "",
-    type: (item.type as string) ?? "",
-    rating: (item.score as string) ?? "",
-    contentType: "anime" as const,
-    time: (item.time as string) ?? "",
-  }));
-
-  return {
-    schedule: [
-      {
-        day: res.day ?? day ?? "senin",
-        anime: animeList,
-      },
-    ],
-    availableDays: res.available_days ?? [],
-  };
-}
-
-// ─── Anime Detail ─────────────────────────────────────────────────────────────
-async function scrapeAnimeDetail(slug: string, type: "anime" | "series" | "film") {
-  const endpoint = type === "film" ? "film" : type === "series" ? "series" : "anime";
-  const { data: res } = await api.get(`/${endpoint}/${slug}`);
-  const d = (res.data ?? res) as Record<string, unknown>;
-  const info = (d.info ?? {}) as Record<string, unknown>;
-  const genres = Array.isArray(info.genres)
-    ? (info.genres as Record<string, string>[]).map((g) => g.name)
-    : [];
-  const episodeList = Array.isArray(d.episodes)
-    ? (d.episodes as Record<string, string>[]).map((ep) => ({
-        title: ep.title,
-        slug: ep.id,
-      }))
-    : [];
-  const recommendations = Array.isArray(d.recommendations)
-    ? (d.recommendations as Record<string, string>[])
-        .filter((r, i, arr) => arr.findIndex((x) => x.id === r.id) === i)
-        .slice(0, 8)
-        .map(mapItem)
-    : [];
-
-  return {
-    title: (d.title as string) ?? "",
-    poster: (d.image as string) ?? "",
-    synopsis: (d.synopsis as string) ?? "",
-    genres,
-    status: info.status as string | undefined,
-    type: (info.type as string) ?? type,
-    rating: info.rating as string | undefined,
-    episodes: info.episodes_count as string | undefined,
-    duration: info.duration as string | undefined,
-    studio: info.studio as string | undefined,
+    title: String(d.title ?? ""),
+    poster: String(d.image ?? ""),
+    synopsis: String(d.synopsis ?? ""),
+    genres: Array.isArray(info.genres) ? (info.genres as Dict[]).map(g => String(g.name ?? "")) : [],
+    status: info.status, type: String(info.type ?? type), rating: info.rating,
+    episodes: info.episodes_count, duration: info.duration, studio: info.studio,
     released: (info.release_date ?? info.season) as string | undefined,
-    episodeList,
-    recommendations,
+    episodeList: Array.isArray(d.episodes) ? (d.episodes as Dict[]).map(ep => ({ title: String(ep.title ?? ""), slug: String(ep.id ?? "") })) : [],
+    recommendations: Array.isArray(d.recommendations) ? (d.recommendations as Dict[]).slice(0, 8).map(mapCard) : [],
   };
 }
 
-// ─── Episode ──────────────────────────────────────────────────────────────────
-async function scrapeEpisode(slug: string) {
-  // 1. Get data from JSON API (title + downloads)
-  const apiResult = await api
-    .get<{
-      status: string;
-      data?: {
-        title?: string;
-        downloads?: { resolution: string; links: { server: string; url: string }[] }[];
-      };
-    }>(`/episode/${slug}`)
-    .catch(() => null);
+async function getEpisode(slug: string) {
+  const [apiRes, htmlRes] = await Promise.allSettled([
+    api.get(`/episode/${slug}`),
+    web.get(`/${slug}/`),
+  ]);
 
-  const epData = apiResult?.data?.data;
-  const title = epData?.title || slug;
-  const downloads = epData?.downloads || [];
-
-  // 2. Scrape winbu.net HTML for streaming servers
+  const epData = apiRes.status === "fulfilled" ? ((apiRes.value.data?.data ?? {}) as Dict) : {};
+  const title = String(epData.title ?? slug);
+  const downloads = Array.isArray(epData.downloads) ? epData.downloads : [];
   const servers: { name: string; post?: string; nume?: string; type?: string }[] = [];
-  let prevEpisode: string | undefined;
-  let nextEpisode: string | undefined;
-  let animeSlug: string | undefined;
-  let animeTitle: string | undefined;
+  let prevEpisode: string | undefined, nextEpisode: string | undefined;
+  let animeSlug: string | undefined, animeTitle: string | undefined;
 
-  try {
-    const htmlRes = await html.get(`/${slug}/`);
-    const $ = cheerio.load(htmlRes.data);
+  if (htmlRes.status === "fulfilled") {
+    const $ = cheerio.load(htmlRes.value.data as string);
+    animeTitle = $(".breadcrumb li:nth-child(2) a, .singleheader .cattitle a").first().text().trim() || undefined;
 
-    // Get anime title from page
-    animeTitle = $(".breadcrumb li:nth-child(2) a, .singleheader .cattitle a, .entry-title a").first().text().trim() || undefined;
-
-    // Find streaming server buttons
     $("[data-post]").each((_, el) => {
       const $el = $(el);
-      const name = $el.text().trim() || $el.attr("data-type") || "Server";
       const post = $el.attr("data-post");
-      const nume = $el.attr("data-nume");
-      const serverType = $el.attr("data-type") || "schtml";
-      if (post) servers.push({ name, post, nume: nume || "1", type: serverType });
+      if (post) servers.push({ name: $el.text().trim() || "Server", post, nume: $el.attr("data-nume") ?? "1", type: $el.attr("data-type") ?? "schtml" });
     });
 
-    // Fallback for other server patterns
-    if (servers.length === 0) {
-      $(".mirror .mirrorlink, .server a, [class*='server']").each((_, el) => {
-        const $el = $(el);
-        const post = $el.attr("data-post") || "";
-        const nume = $el.attr("data-nume") || "1";
-        const serverType = $el.attr("data-type") || "schtml";
-        const name = $el.text().trim() || serverType;
-        if (post) servers.push({ name, post, nume, type: serverType });
-      });
-    }
-
-    // Prev/next navigation
-    const prevHref = $(".nvs.nvsc a.prev, .nvsc a.prev, [rel=prev], a.prev").attr("href") || "";
-    const nextHref = $(".nvs.nvsc a.next, .nvsc a.next, [rel=next], a.next").attr("href") || "";
-    prevEpisode = extractSlugFromUrl(prevHref) || undefined;
-    nextEpisode = extractSlugFromUrl(nextHref) || undefined;
-
-    // Anime parent slug from breadcrumb
-    const animeHref =
-      $(".breadcrumb a:nth-child(2), .series-breadcrumb a, .singleheader a").attr("href") || "";
-    animeSlug = extractSlugFromUrl(animeHref) || undefined;
-  } catch {
-    // If scraping fails, continue with API data only
+    prevEpisode = slugFromUrl($(".nvsc a.prev, [rel=prev], a.prev").attr("href") ?? "") || undefined;
+    nextEpisode = slugFromUrl($(".nvsc a.next, [rel=next], a.next").attr("href") ?? "") || undefined;
+    animeSlug = slugFromUrl($(".breadcrumb a:nth-child(2), .singleheader a").attr("href") ?? "") || undefined;
   }
 
   return { title, animeTitle, servers, downloads, prevEpisode, nextEpisode, animeSlug };
 }
 
-// ─── Server ───────────────────────────────────────────────────────────────────
-async function scrapeServer(post: string, nume: string, type: string) {
-  const { data: res } = await api.get<{
-    status: string;
-    embed_url?: string;
-    embedUrl?: string;
-    html?: string;
-  }>("/server", { params: { post, nume, type } });
-
-  const embedUrl = res.embed_url || res.embedUrl || "";
-  return { embedUrl };
+async function getServer(post: string, nume: string, type: string) {
+  const { data: r } = await api.get("/server", { params: { post, nume, type } });
+  return { embedUrl: String(r.embed_url ?? r.embedUrl ?? "") };
 }
 
-// ─── Express App ──────────────────────────────────────────────────────────────
-const app = express();
-app.use(cors());
-app.use(express.json());
-
-function sendError(res: Response, err: unknown) {
-  const msg = err instanceof Error ? err.message : String(err);
-  const status = (err as { response?: { status?: number } })?.response?.status ?? 500;
-  res.status(status).json({ error: "Error", message: msg });
+// ── request body reader ───────────────────────────────────────────────────────
+function readBody(req: IncomingMessage): Promise<string> {
+  return new Promise(resolve => {
+    const chunks: Buffer[] = [];
+    req.on("data", c => chunks.push(c));
+    req.on("end", () => resolve(Buffer.concat(chunks).toString()));
+  });
 }
 
-app.get("/api/healthz", (_req, res: Response) => res.json({ status: "ok" }));
+// ── main handler ─────────────────────────────────────────────────────────────
+export default async function handler(req: IncomingMessage, res: ServerResponse) {
+  // CORS
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Content-Type", "application/json");
+  if (req.method === "OPTIONS") { res.statusCode = 200; res.end(); return; }
 
-app.get("/api/anime/home", async (_req, res: Response) => {
-  try { res.json(await scrapeHome()); } catch (err) { sendError(res, err); }
-});
+  const url = new URL(req.url ?? "/", "https://localhost");
+  const path = url.pathname.replace(/^\/api/, "");
+  const q = (k: string) => url.searchParams.get(k) ?? "";
+  const qi = (k: string, def = 1) => Number(url.searchParams.get(k) ?? def);
 
-app.get("/api/anime/search", async (req, res: Response) => {
+  const send = (code: number, data: unknown) => {
+    res.statusCode = code;
+    res.end(JSON.stringify(data));
+  };
+
   try {
-    const q = req.query.q as string;
-    const page = Number(req.query.page ?? 1);
-    if (!q) return res.status(400).json({ error: "BadRequest", message: "q is required" });
-    res.json(await scrapeSearch(q, page));
-  } catch (err) { sendError(res, err); }
-});
+    if (path === "/healthz") return send(200, { status: "ok" });
+    if (path === "/anime/home") return send(200, await getHome());
 
-app.get("/api/anime/list", async (req, res: Response) => {
-  try {
-    const category = (req.query.category as string) || "all-anime";
-    const page = Number(req.query.page ?? 1);
-    res.json(await scrapeAnimeList(category, page));
-  } catch (err) { sendError(res, err); }
-});
+    if (path === "/anime/search") {
+      const qs = q("q");
+      if (!qs) return send(400, { error: "BadRequest", message: "q required" });
+      return send(200, await getSearch(qs, qi("page")));
+    }
 
-app.get("/api/anime/catalog", async (req, res: Response) => {
-  try {
-    const { title, page, order, type, status } = req.query as Record<string, string>;
-    res.json(await scrapeCatalog({ title, page: Number(page ?? 1), order, type, status }));
-  } catch (err) { sendError(res, err); }
-});
+    if (path === "/anime/list") return send(200, await getList(q("category") || "all-anime", qi("page")));
 
-app.get("/api/anime/genres", async (_req, res: Response) => {
-  try { res.json(await scrapeGenres()); } catch (err) { sendError(res, err); }
-});
+    if (path === "/anime/catalog") {
+      const params: Dict = { page: qi("page") };
+      ["title","order","type","status"].forEach(k => { const v = q(k); if (v) params[k] = v; });
+      return send(200, await getCatalog(params));
+    }
 
-app.get("/api/anime/genre/:slug", async (req, res: Response) => {
-  try {
-    const { slug } = req.params;
-    const page = Number(req.query.page ?? 1);
-    res.json(await scrapeByGenre(slug, page));
-  } catch (err) { sendError(res, err); }
-});
+    if (path === "/anime/genres") return send(200, await getGenres());
 
-app.get("/api/anime/schedule", async (req, res: Response) => {
-  try {
-    const day = req.query.day as string | undefined;
-    res.json(await scrapeSchedule(day));
-  } catch (err) { sendError(res, err); }
-});
+    const genre = path.match(/^\/anime\/genre\/(.+)$/);
+    if (genre) return send(200, await getByGenre(genre[1], qi("page")));
 
-app.get("/api/anime/detail/:slug", async (req, res: Response) => {
-  try {
-    const { slug } = req.params;
-    const type = (req.query.type as "anime" | "series" | "film") || "anime";
-    res.json(await scrapeAnimeDetail(slug, type));
-  } catch (err) { sendError(res, err); }
-});
+    if (path === "/anime/schedule") return send(200, await getSchedule(q("day") || undefined));
 
-app.get("/api/anime/episode/:slug", async (req, res: Response) => {
-  try {
-    const { slug } = req.params;
-    res.json(await scrapeEpisode(slug));
-  } catch (err) { sendError(res, err); }
-});
+    const detail = path.match(/^\/anime\/detail\/(.+)$/);
+    if (detail) return send(200, await getDetail(detail[1], q("type") || "anime"));
 
-app.get("/api/anime/server", async (req, res: Response) => {
-  try {
-    const { post, nume, type } = req.query as Record<string, string>;
-    if (!post || !nume || !type)
-      return res.status(400).json({ error: "BadRequest", message: "Parameters post, nume, type are required" });
-    res.json(await scrapeServer(post, nume, type));
-  } catch (err) { sendError(res, err); }
-});
+    const episode = path.match(/^\/anime\/episode\/(.+)$/);
+    if (episode) return send(200, await getEpisode(episode[1]));
 
-export default function handler(req: IncomingMessage, res: ServerResponse) {
-  return app(req as Request, res as Response);
+    if (path === "/anime/server") {
+      const post = q("post"), nume = q("nume"), type = q("type");
+      if (!post || !nume || !type) return send(400, { error: "BadRequest", message: "post, nume, type required" });
+      return send(200, await getServer(post, nume, type));
+    }
+
+    return send(404, { error: "NotFound", message: `Route ${path} not found` });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    const status = (err as { response?: { status?: number } })?.response?.status ?? 500;
+    return send(status, { error: "Error", message: msg });
+  }
 }
