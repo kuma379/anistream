@@ -5,7 +5,6 @@ import { LoadingPage } from "@/components/shared/LoadingState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, LayoutGrid, MonitorPlay, AlertCircle } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 
 export default function Episode() {
   const { slug } = useParams<{ slug: string }>();
@@ -16,14 +15,12 @@ export default function Episode() {
 
   const [activeServer, setActiveServer] = useState<any>(null);
   
-  // Set default server when data loads
   useEffect(() => {
     if (episode?.servers && episode.servers.length > 0 && !activeServer) {
       setActiveServer(episode.servers[0]);
     }
   }, [episode, activeServer]);
 
-  // When slug changes, reset active server so it re-selects the first one of new ep
   useEffect(() => {
     setActiveServer(null);
   }, [slug]);
@@ -46,9 +43,7 @@ export default function Episode() {
   if (error) return <ErrorState title="Failed to load episode" />;
   if (!episode) return null;
 
-  // Prioritize the server embedUrl if fetched, otherwise fallback to the default one if present
-  const rawVideoUrl = serverData?.embedUrl || (activeServer === null ? episode.embedUrl : "");
-  // Wrap through our proxy to strip popup ads
+  const rawVideoUrl = serverData?.embedUrl || (activeServer === null ? (episode as any).embedUrl : "");
   const apiBase = import.meta.env.VITE_API_BASE ?? "";
   const videoUrl = rawVideoUrl ? `${apiBase}/api/anime/proxy?url=${encodeURIComponent(rawVideoUrl)}` : "";
 
@@ -67,7 +62,7 @@ export default function Episode() {
             <span className="ml-2">{episode.title}</span>
           </h1>
         </div>
-        <div className="w-[100px]" /> {/* Spacer for balance */}
+        <div className="w-[100px]" />
       </div>
 
       {/* Video Container */}
@@ -85,12 +80,13 @@ export default function Episode() {
             </div>
           ) : videoUrl ? (
             <iframe
+              key={videoUrl}
               src={videoUrl}
               className="absolute inset-0 w-full h-full border-0"
               allowFullScreen
-              allow="autoplay; encrypted-media; fullscreen; picture-in-picture"
-              sandbox="allow-scripts allow-forms allow-presentation"
+              allow="autoplay; encrypted-media; fullscreen; picture-in-picture; web-share"
               title={episode.title}
+              referrerPolicy="no-referrer-when-downgrade"
             ></iframe>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-900 text-white/50">
