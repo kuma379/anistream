@@ -5,7 +5,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 
-// Pages
 import Home from "@/pages/home";
 import Search from "@/pages/search";
 import Catalog from "@/pages/catalog";
@@ -15,6 +14,10 @@ import Schedule from "@/pages/schedule";
 import AnimeDetail from "@/pages/anime-detail";
 import Episode from "@/pages/episode";
 import CategoryList from "@/pages/category-list";
+import About from "@/pages/about";
+import PrivacyPolicy from "@/pages/privacy-policy";
+import Terms from "@/pages/terms";
+import SitemapPage from "@/pages/sitemap";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -39,7 +42,11 @@ function Router() {
           <Route path="/genre" component={Genres} />
           <Route path="/genre/:slug" component={GenreDetail} />
           <Route path="/schedule" component={Schedule} />
-          
+          <Route path="/about" component={About} />
+          <Route path="/privacy-policy" component={PrivacyPolicy} />
+          <Route path="/terms" component={Terms} />
+          <Route path="/sitemap" component={SitemapPage} />
+
           <Route path="/anime/:slug">
             {() => <AnimeDetail contentType="anime" />}
           </Route>
@@ -49,10 +56,10 @@ function Router() {
           <Route path="/film/:slug">
             {() => <AnimeDetail contentType="film" />}
           </Route>
-          
+
           <Route path="/episode/:slug" component={Episode} />
           <Route path="/list/:category" component={CategoryList} />
-          
+
           <Route component={NotFound} />
         </Switch>
       </main>
@@ -62,8 +69,7 @@ function Router() {
 }
 
 function App() {
-  // Hide navbar/footer on video player page
-  const isVideoRoute = window.location.pathname.includes('/episode/');
+  const isVideoRoute = window.location.pathname.includes("/episode/");
 
   return (
     <QueryClientProvider client={queryClient}>
