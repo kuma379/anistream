@@ -1,17 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useGetCatalog } from "@workspace/api-client-react";
-import type { GetCatalogOrder, GetCatalogType, GetCatalogStatus } from "@workspace/api-client-react";
+import type { GetCatalogOrder, GetCatalogType, GetCatalogStatus, AnimeCard as AnimeCardType } from "@workspace/api-client-react";
 import { AnimeCard } from "@/components/shared/AnimeCard";
-import { LoadingGrid } from "@/components/shared/LoadingState";
 import { ErrorState } from "@/components/shared/ErrorState";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search as SearchIcon, Filter, X } from "lucide-react";
+import { Search as SearchIcon, Filter, X, Loader2 } from "lucide-react";
 import { useDebounce } from "@/hooks/use-debounce";
 
 export default function Catalog() {
   const [page, setPage] = useState(1);
+  const [allItems, setAllItems] = useState<AnimeCardType[]>([]);
   const [title, setTitle] = useState("");
   const debouncedTitle = useDebounce(title, 500);
   
@@ -19,9 +19,14 @@ export default function Catalog() {
   const [type, setType] = useState<GetCatalogType | "">("");
   const [status, setStatus] = useState<GetCatalogStatus | "">("");
 
-  // Reset page when filters change
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const hasNextRef = useRef(false);
+  const loadingRef = useRef(false);
+
+  // Reset when filters change
   useEffect(() => {
     setPage(1);
+    setAllItems([]);
   }, [debouncedTitle, order, type, status]);
 
   const params: any = { page };
@@ -30,7 +35,41 @@ export default function Catalog() {
   if (type) params.type = type;
   if (status) params.status = status;
 
-  const { data, isLoading, error } = useGetCatalog(params);
+  const { data, isLoading, error, isFetching } = useGetCatalog(params);
+
+  // Accumulate items as pages load
+  useEffect(() => {
+    if (data?.data && data.data.length > 0) {
+      if (page === 1) {
+        setAllItems(data.data);
+      } else {
+        setAllItems(prev => {
+          const existingSlugs = new Set(prev.map(a => a.slug));
+          const newItems = data.data.filter(a => !existingSlugs.has(a.slug));
+          return [...prev, ...newItems];
+        });
+      }
+      hasNextRef.current = data.pagination?.hasNext ?? false;
+      loadingRef.current = false;
+    }
+  }, [data, page]);
+
+  // Intersection Observer for infinite scroll
+  const handleIntersect = useCallback((entries: IntersectionObserverEntry[]) => {
+    const entry = entries[0];
+    if (entry.isIntersecting && hasNextRef.current && !loadingRef.current && !isFetching) {
+      loadingRef.current = true;
+      setPage(p => p + 1);
+    }
+  }, [isFetching]);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const observer = new IntersectionObserver(handleIntersect, { rootMargin: "200px" });
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [handleIntersect]);
 
   const resetFilters = () => {
     setTitle("");
@@ -38,6 +77,7 @@ export default function Catalog() {
     setType("");
     setStatus("");
     setPage(1);
+    setAllItems([]);
   };
 
   const hasFilters = title || order || type || status;
@@ -107,39 +147,35 @@ export default function Catalog() {
           </div>
         </div>
 
-        {isLoading ? (
-          <LoadingGrid />
+        {isLoading && page === 1 ? (
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2 md:gap-3">
+            {Array.from({ length: 28 }).map((_, i) => (
+              <div key={i} className="aspect-[2/3] rounded-lg bg-secondary/40 animate-pulse" />
+            ))}
+          </div>
         ) : error ? (
           <ErrorState title="Failed to load catalog" />
-        ) : data?.data && data.data.length > 0 ? (
-          <div className="space-y-8">
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-              {data.data.map((anime, i) => (
-                <AnimeCard key={anime.slug} anime={anime} index={i} />
+        ) : allItems.length > 0 ? (
+          <>
+            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-2 md:gap-3">
+              {allItems.map((anime, i) => (
+                <AnimeCard key={`${anime.slug}-${i}`} anime={anime} index={i} />
               ))}
             </div>
             
-            {/* Pagination Controls */}
-            <div className="flex justify-center items-center gap-4 pt-8">
-              <Button 
-                variant="outline" 
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={!data.pagination?.hasPrev || page === 1}
-              >
-                Previous
-              </Button>
-              <div className="font-medium px-4 py-2 bg-secondary rounded-md">
-                Page {page}
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={() => setPage(p => p + 1)}
-                disabled={!data.pagination?.hasNext}
-              >
-                Next
-              </Button>
+            {/* Sentinel for infinite scroll */}
+            <div ref={sentinelRef} className="flex justify-center py-8">
+              {isFetching && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Loading more...</span>
+                </div>
+              )}
+              {!isFetching && !hasNextRef.current && allItems.length > 0 && (
+                <p className="text-sm text-muted-foreground">Semua konten sudah dimuat</p>
+              )}
             </div>
-          </div>
+          </>
         ) : (
           <div className="text-center py-20 text-muted-foreground">
             <Filter className="w-16 h-16 mx-auto mb-4 opacity-20" />
