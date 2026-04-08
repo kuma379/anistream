@@ -10,7 +10,7 @@ export default function PrivacyPolicy() {
 
         <div className="space-y-8 text-muted-foreground leading-relaxed">
           <Section title="1. Informasi yang Kami Kumpulkan">
-            <p>AniStream tidak mengharuskan pengguna untuk membuat akun atau mendaftar. Kami mungkin mengumpulkan informasi berikut secara otomatis saat kamu menggunakan layanan kami:</p>
+            <p>XiciMovie tidak mengharuskan pengguna untuk membuat akun atau mendaftar. Kami mungkin mengumpulkan informasi berikut secara otomatis saat kamu menggunakan layanan kami:</p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>Data teknis seperti jenis browser, sistem operasi, dan alamat IP</li>
               <li>Halaman yang dikunjungi dan durasi kunjungan</li>
@@ -37,7 +37,7 @@ export default function PrivacyPolicy() {
 
           <Section title="4. Layanan Pihak Ketiga">
             <p>
-              AniStream menggunakan layanan pihak ketiga termasuk penyedia server video. Layanan-layanan ini
+              XiciMovie menggunakan layanan pihak ketiga termasuk penyedia server video. Layanan-layanan ini
               memiliki kebijakan privasi tersendiri yang terpisah dari kebijakan kami. Kami tidak bertanggung
               jawab atas praktik privasi pihak ketiga tersebut.
             </p>
@@ -53,8 +53,8 @@ export default function PrivacyPolicy() {
 
           <Section title="6. Konten dari Sumber Ketiga">
             <p>
-              Konten yang ditampilkan di AniStream bersumber dari penyedia layanan streaming pihak ketiga.
-              AniStream tidak menyimpan atau menghosting file video secara langsung. Semua konten ditampilkan
+              Konten yang ditampilkan di XiciMovie bersumber dari penyedia layanan streaming pihak ketiga.
+              XiciMovie tidak menyimpan atau menghosting file video secara langsung. Semua konten ditampilkan
               melalui embed dari sumber aslinya.
             </p>
           </Section>
@@ -79,8 +79,8 @@ export default function PrivacyPolicy() {
           <Section title="9. Hubungi Kami">
             <p>
               Jika kamu memiliki pertanyaan tentang kebijakan privasi ini, silakan hubungi kami di:{" "}
-              <a href="mailto:admin@anistream.app" className="text-primary hover:underline">
-                admin@anistream.app
+              <a href="mailto:admin@xicimovie.web.id" className="text-primary hover:underline">
+                admin@xicimovie.web.id
               </a>
             </p>
           </Section>

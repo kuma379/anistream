@@ -30,7 +30,7 @@ export function Footer() {
               <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
                 <PlayCircle className="w-4 h-4 text-primary fill-primary/30" />
               </div>
-              <span className="font-bold text-lg font-display">AniStream</span>
+              <span className="font-bold text-lg font-display">XiciMovie</span>
             </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Platform streaming anime, donghua, dan film favorit kamu — gratis dan selalu update.
@@ -69,7 +69,7 @@ export function Footer() {
         {/* Bottom bar */}
         <div className="border-t border-border/40 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground text-center sm:text-left">
-            &copy; {year} AniStream. Semua konten adalah milik pemegang hak cipta masing-masing.
+            &copy; {year} XiciMovie. Semua konten adalah milik pemegang hak cipta masing-masing.
           </p>
           <p className="text-xs text-muted-foreground">
             Dibuat dengan ❤️ untuk penggemar anime Indonesia

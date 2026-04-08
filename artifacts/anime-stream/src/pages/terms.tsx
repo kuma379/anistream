@@ -11,14 +11,14 @@ export default function Terms() {
         <div className="space-y-8 text-muted-foreground leading-relaxed">
           <Section title="1. Persetujuan Penggunaan">
             <p>
-              Dengan mengakses dan menggunakan AniStream, kamu menyetujui syarat dan ketentuan ini secara penuh.
+              Dengan mengakses dan menggunakan XiciMovie, kamu menyetujui syarat dan ketentuan ini secara penuh.
               Jika kamu tidak menyetujui bagian manapun dari ketentuan ini, harap tidak menggunakan layanan kami.
             </p>
           </Section>
 
           <Section title="2. Layanan yang Disediakan">
             <p>
-              AniStream menyediakan platform untuk menonton anime, donghua, dan film melalui embed dari sumber
+              XiciMovie menyediakan platform untuk menonton anime, donghua, dan film melalui embed dari sumber
               pihak ketiga. Kami berfungsi sebagai agregator konten dan tidak menyimpan file media apapun di
               server kami secara langsung.
             </p>
@@ -47,7 +47,7 @@ export default function Terms() {
           <Section title="5. Hak Kekayaan Intelektual">
             <p>
               Seluruh konten anime, film, dan donghua yang ditampilkan merupakan hak milik pemegang hak cipta
-              masing-masing (studio produksi, distributor, dll). AniStream tidak mengklaim kepemilikan atas
+              masing-masing (studio produksi, distributor, dll). XiciMovie tidak mengklaim kepemilikan atas
               konten tersebut. Jika kamu adalah pemegang hak cipta dan merasa kontenmu ditampilkan tanpa izin,
               silakan hubungi kami untuk penghapusan.
             </p>
@@ -55,7 +55,7 @@ export default function Terms() {
 
           <Section title="6. Penafian Tanggung Jawab">
             <p>
-              AniStream disediakan "sebagaimana adanya" tanpa jaminan apapun. Kami tidak bertanggung jawab atas:
+              XiciMovie disediakan "sebagaimana adanya" tanpa jaminan apapun. Kami tidak bertanggung jawab atas:
             </p>
             <ul className="list-disc pl-5 mt-2 space-y-1">
               <li>Gangguan atau ketidaktersediaan layanan</li>
@@ -98,8 +98,8 @@ export default function Terms() {
           <Section title="11. Hubungi Kami">
             <p>
               Pertanyaan mengenai syarat dan ketentuan ini dapat dikirimkan ke:{" "}
-              <a href="mailto:admin@anistream.app" className="text-primary hover:underline">
-                admin@anistream.app
+              <a href="mailto:admin@xicimovie.web.id" className="text-primary hover:underline">
+                admin@xicimovie.web.id
               </a>
             </p>
           </Section>

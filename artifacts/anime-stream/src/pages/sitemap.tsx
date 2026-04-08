@@ -99,7 +99,7 @@ export default function Sitemap() {
           </div>
           <div>
             <h1 className="text-3xl md:text-4xl font-extrabold font-display">Peta Situs</h1>
-            <p className="text-muted-foreground text-sm mt-0.5">Semua halaman yang tersedia di AniStream</p>
+            <p className="text-muted-foreground text-sm mt-0.5">Semua halaman yang tersedia di XiciMovie</p>
           </div>
         </div>
 

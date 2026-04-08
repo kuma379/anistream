@@ -46,7 +46,7 @@ export function Navbar() {
         <div className="flex items-center gap-6 md:gap-10">
           <Link href="/" className="flex items-center gap-2 text-primary hover:text-primary/90 transition-colors">
             <PlayCircle className="w-8 h-8 fill-primary text-background" />
-            <span className="text-xl font-bold tracking-tight font-display hidden sm:inline-block">AniStream</span>
+            <span className="text-xl font-bold tracking-tight font-display hidden sm:inline-block">XiciMovie</span>
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
