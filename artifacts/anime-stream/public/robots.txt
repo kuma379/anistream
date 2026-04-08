@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /episode/
+
+Sitemap: https://anistream-api-server3.vercel.app/sitemap.xml
