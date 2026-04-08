@@ -175,7 +175,7 @@ async function getEpisode(slug: string) {
       });
     }
 
-    // Prev/next episode navigation - updated selectors for current winbu.net structure
+    // Prev/next episode navigation
     prevEpisode = slugFromUrl($(".naveps .nvs:not(.rght):not(.nvsc) a").first().attr("href") ?? "") || undefined;
     nextEpisode = slugFromUrl($(".naveps .nvs.rght a").first().attr("href") ?? "") || undefined;
 
@@ -206,14 +206,14 @@ async function proxyEmbed(embedUrl: string): Promise<string> {
   });
 
   // Inject <base> so relative asset URLs resolve to original host
-  let out: string = html.replace(/(<head[^>]*>)/i, `$1<base href="${origin}/">`);
+  let out: string = (html as string).replace(/(<head[^>]*>)/i, `$1<base href="${origin}/">`);
 
   // Neutralise window.open / popunder patterns
   out = out
-    .replace(/window\.open\s*\(/g, "void(0,")
-    .replace(/window\.top\s*\.\s*location/g, "void(0)//")
+    .replace(/window\.open\s*\(/g, "void(0||window.open(")
+    .replace(/window\.top\s*\.\s*location\s*=/g, "void(0)//=")
     .replace(/top\s*\.\s*location\s*=/g, "void(0)//=")
-    .replace(/parent\s*\.\s*location/g, "void(0)//")
+    .replace(/parent\s*\.\s*location\s*=/g, "void(0)//=")
     .replace(/document\.location\s*=/g, "void(0)//=")
     .replace(
       /<script[^>]*src=["'][^"']*(?:popads|popunder|popad|pop-under|pop-ad|clickunder|trafficjunky|mgid|exoclick|adsterra|hilltopads|moonads)[^"']*["'][^>]*>(\s*<\/script>)?/gi,
@@ -288,7 +288,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       return send(200, await getServer(post, nume, type));
     }
 
-
     if (path === "/anime/proxy") {
       const rawUrl = q("url");
       if (!rawUrl) return send(400, { error: "BadRequest", message: "url required" });
@@ -299,10 +298,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const proxiedHtml = await proxyEmbed(rawUrl);
       res.statusCode = 200;
       res.setHeader("Content-Type", "text/html; charset=utf-8");
+      // Permissive CSP without sandbox directive — allows video players to work correctly
       res.setHeader(
         "Content-Security-Policy",
-        "sandbox allow-scripts allow-forms allow-presentation; default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;"
+        "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; media-src * data: blob:; frame-src *; connect-src *;"
       );
+      // Allow embedding from same origin (the app proxies on same domain)
       res.setHeader("X-Frame-Options", "SAMEORIGIN");
       res.removeHeader("Access-Control-Allow-Origin");
       res.end(proxiedHtml);
