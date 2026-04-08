@@ -134,19 +134,53 @@ async function getEpisode(slug: string) {
   let prevEpisode: string | undefined, nextEpisode: string | undefined;
   let animeSlug: string | undefined, animeTitle: string | undefined;
 
+  // Primary: use streams data from API response (most reliable)
+  if (Array.isArray(epData.streams) && (epData.streams as Dict[]).length > 0) {
+    (epData.streams as Dict[]).forEach(s => {
+      const d = (s.data ?? {}) as Dict;
+      const post = String(d.post ?? "");
+      if (post) {
+        const serverName = String(s.server ?? "Server");
+        const resolution = String(s.resolution ?? "");
+        servers.push({
+          name: resolution ? `${serverName} (${resolution})` : serverName,
+          post,
+          nume: String(d.nume ?? "1"),
+          type: String(d.type ?? "schtml"),
+        });
+      }
+    });
+  }
+
   if (htmlRes.status === "fulfilled") {
     const $ = cheerio.load(htmlRes.value.data as string);
-    animeTitle = $(".breadcrumb li:nth-child(2) a, .singleheader .cattitle a").first().text().trim() || undefined;
 
-    $("[data-post]").each((_, el) => {
-      const $el = $(el);
-      const post = $el.attr("data-post");
-      if (post) servers.push({ name: $el.text().trim() || "Server", post, nume: $el.attr("data-nume") ?? "1", type: $el.attr("data-type") ?? "schtml" });
-    });
+    // Anime title from page heading
+    animeTitle = $("h1.titless, h1.headpost, .animetitle-episode").first().text().trim() || undefined;
 
-    prevEpisode = slugFromUrl($(".nvsc a.prev, [rel=prev], a.prev").attr("href") ?? "") || undefined;
-    nextEpisode = slugFromUrl($(".nvsc a.next, [rel=next], a.next").attr("href") ?? "") || undefined;
-    animeSlug = slugFromUrl($(".breadcrumb a:nth-child(2), .singleheader a").attr("href") ?? "") || undefined;
+    // Fallback: scrape servers from HTML if API streams were empty
+    if (servers.length === 0) {
+      $(".east_player_option[data-post], [data-post]").each((_, el) => {
+        const $el = $(el);
+        const post = $el.attr("data-post");
+        if (post) {
+          const name = $el.find("span").text().trim() || $el.text().trim() || "Server";
+          servers.push({
+            name,
+            post,
+            nume: $el.attr("data-nume") ?? "1",
+            type: $el.attr("data-type") ?? "schtml",
+          });
+        }
+      });
+    }
+
+    // Prev/next episode navigation - updated selectors for current winbu.net structure
+    prevEpisode = slugFromUrl($(".naveps .nvs:not(.rght):not(.nvsc) a").first().attr("href") ?? "") || undefined;
+    nextEpisode = slugFromUrl($(".naveps .nvs.rght a").first().attr("href") ?? "") || undefined;
+
+    // Anime slug from "All Episode" link in navigation
+    animeSlug = slugFromUrl($(".nvs.nvsc a").first().attr("href") ?? "") || undefined;
   }
 
   return { title, animeTitle, servers, downloads, prevEpisode, nextEpisode, animeSlug };
