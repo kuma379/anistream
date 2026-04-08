@@ -1,4 +1,4 @@
-// v2 - sandbox removed
+// v3 - direct embed, no proxy
 import { useState, useEffect } from "react";
 import { useParams, Link } from "wouter";
 import { useGetEpisode, useGetServer } from "@workspace/api-client-react";
@@ -44,9 +44,8 @@ export default function Episode() {
   if (error) return <ErrorState title="Failed to load episode" />;
   if (!episode) return null;
 
-  const rawVideoUrl = serverData?.embedUrl || (activeServer === null ? (episode as any).embedUrl : "");
-  const apiBase = import.meta.env.VITE_API_BASE ?? "";
-  const videoUrl = rawVideoUrl ? `${apiBase}/api/anime/proxy?url=${encodeURIComponent(rawVideoUrl)}` : "";
+  // Use embed URL directly — video hosts (VidHide, MEGA, etc.) are designed for direct iframe embed
+  const videoUrl = serverData?.embedUrl || (activeServer === null ? (episode as any).embedUrl : "");
 
   return (
     <div className="min-h-[100dvh] bg-black text-white flex flex-col">
